@@ -1,0 +1,51 @@
+# =============================================================================
+# Auto-merge Dependabot PRs - Automatically merge safe dependency updates
+# =============================================================================
+# TRIGGERS : Any pull_request event (only acts when actor is dependabot[bot]).
+#
+# WHAT IT DOES:
+#   Reads Dependabot's update metadata and enables GitHub's built-in auto-merge
+#   for PRs that are safe to merge without manual review:
+#     ✓ Any PATCH update (e.g., 1.2.3 → 1.2.4) - no breaking changes by semver
+#     ✓ MINOR updates to DEV dependencies (not shipped to production users)
+#     ✗ MINOR updates to production deps - still require your manual review
+#     ✗ MAJOR updates - always require manual review
+#
+#   Auto-merge does NOT merge immediately - it waits for all required CI
+#   status checks to pass (lint, typecheck, e2e) before merging.
+#
+# ONE-TIME SETUP IN GITHUB (required for this to work):
+#   1. Settings → General → Pull Requests → ✓ "Allow auto-merge"
+#   2. Settings → Branches → Branch protection for `main`:
+#      ✓ Require status checks: "Lint & Format", "Type Check", "E2E Tests"
+#   Without step 2, auto-merge fires immediately without waiting for CI.
+# =============================================================================
+name: Auto-merge Dependabot PRs
+
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    name: Auto-merge Dependabot
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Auto-merge patch and minor dev dependency updates
+        if: |
+          steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+          (steps.metadata.outputs.update-type == 'version-update:semver-minor' &&
+           steps.metadata.outputs.dependency-type == 'direct:development')
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
