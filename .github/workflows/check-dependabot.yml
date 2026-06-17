@@ -32,10 +32,12 @@ jobs:
               schedule:
                 interval: "weekly"' > .github/dependabot.yml
 
-      - name: Commit dependabot.yml
+      - name: Commit and push dependabot.yml
         run: |
-          git config --global user.email "github-actions@github.com"
-          git config --global user.name "GitHub Actions"
-          git add .github/dependabot.yml
-          git commit -m "Add dependabot.yml" || echo "No changes to commit"
-          git push origin main # Make sure to specify the correct branch
+           git config --global user.email "github-actions@github.com"
+           git config --global user.name "GitHub Actions"
+           git add .github/dependabot.yml
+           git commit -m "Add dependabot.yml" || echo "No changes to commit"
+           git fetch origin main
+           git rebase origin/main
+           git push origin main
